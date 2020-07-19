@@ -31,6 +31,24 @@ the Object tree, example for path ```/foo```:
     bin/console basilicom:xmltool:export /foo
 ```
 
+Example output:
+
+Note: The Object tree ```/``` contains in the example a single Object of 
+the Object Class ```Bar``` with a single Input property of ```name```.
+
+```
+Exporting tree of Objects starting at /
+<?xml version="1.0"?>
+<root id="1" type="folder" key="" class="Folder">
+  <:children>
+    <Bar id="4" type="object" key="baaaar" class="Bar">
+      <name><![CDATA[bar]]></name>
+    </Bar>
+  </:children>
+</root>
+```
+
+
 For all options (writing to a file, etc.), see:
 
 ```

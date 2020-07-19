@@ -25,10 +25,11 @@ class ExportCommand extends AbstractCommand
             ->setDescription('Exports a tree of objects')
             ->setHelp('Exports objects')
             ->addOption('file',null,InputOption::VALUE_REQUIRED, 'If set, write to this file', false)
-            ->addOption('asset',null,InputOption::VALUE_REQUIRED, 'If set export as Pimcore Asset')
+            ->addOption('asset',null,InputOption::VALUE_REQUIRED, 'If set export to specified Pimcore Asset (full path)', false)
             ->addOption('omit-relation-object-attributes',null,null, 'Do not export attributes of related objects')
             ->addOption('omit-unsupported-field-types',null,null, 'Do not export attributes of related objects')
             ->addOption('include-variants',null,null, 'Export variants of object relations, too')
+            ->addOption('prettify',null,null, 'Make XML output human-readable (indentation)', true)
             ->addArgument(
                 'objectPath',
                 InputArgument::REQUIRED,
@@ -63,8 +64,12 @@ class ExportCommand extends AbstractCommand
         $treeData = $this->exportObject($object);
 
         $arrayToXml = new ArrayToXml($treeData, $root);
-        $result = $arrayToXml->prettify()->toXml();
 
+        if ($input->getOption('prettify')) {
+            $result = $arrayToXml->prettify()->toXml();
+        } else {
+            $result = $arrayToXml->toXml();
+        }
 
         if ($targetFile) {
             file_put_contents($targetFile, $result);

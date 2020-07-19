@@ -1,0 +1,47 @@
+{
+  "name": "basilicom/xml-tool-bundle",
+  "license": "GPL-3.0-or-later",
+  "type": "pimcore-bundle",
+  "description": "This Bundle provides xml (export) tools for Pimcore.",
+  "keywords": [
+    "pimcore",
+    "xml",
+    "export"
+  ],
+  "homepage": "https://basilicom.de",
+  "authors": [
+    {
+      "name": "Christoph Luehr",
+      "email": "christoph.luehr@basilicom.de"
+    },
+    {
+      "name": "Basilicom GmbH",
+      "homepage": "https://basilicom.de"
+    }
+  ],
+  "config": {
+    "sort-packages": true
+  },
+  "require": {
+    "pimcore/pimcore": ">=6.0 <7.0",
+    "spatie/array-to-xml": "^2.12"
+  },
+  "require-dev": {
+    "codeception/codeception": "^2.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "Basilicom\\XmlToolBundle\\": "."
+    },
+    "exclude-from-classmap": [
+      "Tests"
+    ]
+  },
+  "extra": {
+    "pimcore": {
+      "bundles": [
+        "Basilicom\\XmlToolBundle\\BasilicomXmlToolBundle"
+      ]
+    }
+  }
+}

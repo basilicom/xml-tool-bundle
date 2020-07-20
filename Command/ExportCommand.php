@@ -14,6 +14,9 @@ use Spatie\ArrayToXml\ArrayToXml;
 class ExportCommand extends AbstractCommand
 {
 
+    private $includeVariants = false;
+    private $omitRelationObjectFields = false;
+
     public function __construct(string $name = null)
     {
         parent::__construct($name);
@@ -24,10 +27,11 @@ class ExportCommand extends AbstractCommand
         $this->setName('basilicom:treeexporter:export')
             ->setDescription('Exports a tree of objects')
             ->setHelp('Exports objects')
+            ->addOption('xslt',null,InputOption::VALUE_REQUIRED, 'Apply specified XSL transformation file', false)
             ->addOption('file',null,InputOption::VALUE_REQUIRED, 'If set, write to this file', false)
             ->addOption('asset',null,InputOption::VALUE_REQUIRED, 'If set export to specified Pimcore Asset (full path)', false)
-            ->addOption('omit-relation-object-attributes', null, null, 'Do not export attributes of related objects')
-            ->addOption('omit-unsupported-field-types', null, null, 'Do not export attributes of related objects')
+            ->addOption('root',null,InputOption::VALUE_REQUIRED, 'Use as root node name', false)
+            ->addOption('omit-relation-object-fields', null, null, 'Do not export fields of related objects')
             ->addOption('include-variants', null, null, 'Export variants of object relations, too')
             ->addOption('raw', null, null, 'Do not make XML output human-readable (prettify/indentation)')
             ->addArgument(
@@ -53,6 +57,8 @@ class ExportCommand extends AbstractCommand
         $targetFile = $input->getOption('file');
         $targetAsset = $input->getOption('asset');
 
+        $this->includeVariants = $input->getOption('include-variants');
+        $this->omitRelationObjectFields = $input->getOption('omit-relation-object-fields');
         $output->writeln('Exporting tree of Objects starting at '.$objectPath);
         $object = DataObject::getByPath($objectPath);
 
@@ -61,15 +67,35 @@ class ExportCommand extends AbstractCommand
             $root = 'root';
         }
 
+        if ($input->getOption('root')) {
+            $root = $input->getOption('root');
+        }
+
         $treeData = $this->exportObject($object);
 
         $arrayToXml = new ArrayToXml($treeData, $root);
 
-        if ($input->getOption('raw')) {
-            $result = $arrayToXml->toXml();
-        } else {
-            $result = $arrayToXml->prettify()->toXml();
+        $result = $arrayToXml->toDom();
+
+        if ($input->getOption('xslt')){
+
+            $xmlDom = $result;
+
+            $xslDom = new \DOMDocument;
+            $xslDom->load($input->getOption('xslt'));
+
+            $proc = new \XSLTProcessor;
+            $proc->importStyleSheet($xslDom);
+
+            $result = $proc->transformToDoc($xmlDom);
         }
+
+        if (!$input->getOption('raw')) {
+            $result->preserveWhiteSpace = false;
+            $result->formatOutput = true;
+        }
+
+        $result = $result->saveXML();
 
         if ($targetFile) {
             file_put_contents($targetFile, $result);
@@ -115,7 +141,7 @@ class ExportCommand extends AbstractCommand
      *
      * @todo Check for a specific "export" on a class in order to allow overriding the "default" way
      */
-    private function exportObject(DataObject $object, $useRecursion=true)
+    private function exportObject(DataObject $object, $useRecursion=true, $addFields=true)
     {
         $objectData = [];
 
@@ -128,26 +154,28 @@ class ExportCommand extends AbstractCommand
 
             $className = $cl->getName();
 
-            $fds = $cl->getFieldDefinitions();
-            foreach ($fds as $fd) {
-                $fieldName = $fd->getName();
-                $fieldType = $fd->getFieldtype();
+            if ($addFields) {
 
-                $getterFunction = 'getForType' . ucfirst($fieldType);
+                $fds = $cl->getFieldDefinitions();
+                foreach ($fds as $fd) {
+                    $fieldName = $fd->getName();
+                    $fieldType = $fd->getFieldtype();
 
-                if (method_exists($this, $getterFunction)) {
+                    $getterFunction = 'getForType' . ucfirst($fieldType);
 
-                    $objectData[$fieldName] = $this->$getterFunction($object, $fieldName);
-                } else {
+                    if (method_exists($this, $getterFunction)) {
 
-                    $objectData[$fieldName] = ['_attributes' => ['skipped' => 'true', 'fieldtype'=>$fieldType]];
+                        $objectData[$fieldName] = $this->$getterFunction($object, $fieldName);
+                    } else {
 
-                    echo "Unsupported field type: " . $fieldType . ' in ' . $className . ' for '.$fieldName."\n";
+                        $objectData[$fieldName] = ['_attributes' => ['skipped' => 'true', 'fieldtype'=>$fieldType]];
+
+                        echo "Unsupported field type: " . $fieldType . ' in ' . $className . ' for '.$fieldName."\n";
+                    }
                 }
             }
+
         }
-
-
 
         $childDataList = [];
 
@@ -155,8 +183,6 @@ class ExportCommand extends AbstractCommand
             $children = $object->getChildren();
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
-                //var_dump($childData);exit;
-                //$childDataList[] = [$childData['_attributes']['class'] => [$childData]];
                 if (!array_key_exists($childData['_attributes']['class'], $childDataList)) {
                     $childDataList[$childData['_attributes']['class']] = [];
                 }
@@ -164,16 +190,36 @@ class ExportCommand extends AbstractCommand
             }
         }
 
+        $variantDataList = [];
+
+        if ($this->includeVariants) {
+            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT]);
+            foreach ($children as $child) {
+                $childData =  $this->exportObject($child);
+                if (!array_key_exists($childData['_attributes']['class'], $variantDataList)) {
+                    $variantDataList[$childData['_attributes']['class']] = [];
+                }
+                $variantDataList[$childData['_attributes']['class']][] = $childData;
+            }
+        }
+
+
+        if ($childDataList !== []) {
+            $objectData[':children'] = $childDataList;
+        }
+
+        if ($variantDataList !== []) {
+            $objectData[':variants'] = $variantDataList;
+        }
+
         $objectData['_attributes'] = [
             'id' => $object->getId(),
             'type' => $object->getType(),
             'key'  => $object->getKey(),
             'class' => $className,
+            'is-variant-leaf' => (($object->getType()=='variant')&&(count($variantDataList)==0)?'true':'false'),
+            'is-object-leaf' => (($object->getType()=='object')&&(count($childDataList)==0)?'true':'false'),
         ];
-
-        if ($childDataList !== []) {
-            $objectData[':children'] = $childDataList;
-        }
 
         return $objectData;
     }
@@ -185,8 +231,12 @@ class ExportCommand extends AbstractCommand
         $relations = [];
         $getterFunction = 'get'.ucfirst($fieldname);
         foreach($object->$getterFunction() as $relationObject) {
-            $exportObject = $this->exportObject($relationObject, false);
-            $relations[] = [$exportObject['_attributes']['class']=>$exportObject];
+            $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
+
+            if (!array_key_exists($exportObject['_attributes']['class'], $relations)) {
+                $relations[$exportObject['_attributes']['class']] = [];
+            }
+            $relations[$exportObject['_attributes']['class']][] = $exportObject;
         }
 
         return $relations;
@@ -206,5 +256,34 @@ class ExportCommand extends AbstractCommand
     private function getForTypeSelect($object, $fieldname)
     {
         return $this->getForTypeInput($object, $fieldname);
+    }
+
+    private function getForTypeNumeric($object, $fieldname)
+    {
+        $getterFunction = 'get'.ucfirst($fieldname);
+        $data = $object->$getterFunction();
+        return $data;
+    }
+
+    private function getForTypeTextarea($object, $fieldname)
+    {
+        return $this->getForTypeInput($object, $fieldname);
+    }
+
+    private function getForTypeWysiwyg($object, $fieldname)
+    {
+        return $this->getForTypeInput($object, $fieldname);
+    }
+
+    private function getForTypeDate($object, $fieldname)
+    {
+        $getterFunction = 'get'.ucfirst($fieldname);
+        $data = (string)$object->$getterFunction();
+        return $data;
+    }
+
+    private function getForTypeDatetime($object, $fieldname)
+    {
+        return $this->getForTypeDate($object, $fieldname);
     }
 }

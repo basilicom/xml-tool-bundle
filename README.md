@@ -48,6 +48,36 @@ Exporting tree of Objects starting at /
 </root>
 ```
 
+Complex example:
+
+* do not export the attributes / fields of objects attached via relations
+* export variants of objects, too
+* change the name of the root node to 'Products'
+* apply a sample xslt
+* export to a pimcore asset ```/output/my-export.xml```
+
+```
+./bin/console basilicom:xmltool:export --omit-relation-object-fields --include-variants --root=products --asset=/output/my-export.xml --xslt sample.xsl /exp
+```
+
+Sample XSLT:
+
+```xml
+<?xml version="1.0"?>
+<xsl:stylesheet version="1.0"
+                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
+  <xsl:template match="/">
+    <objects>
+    <xsl:for-each select="//Leaf">
+      <object>
+        <name><xsl:value-of select="name"/></name>
+      </object>
+    </xsl:for-each>
+    </objects>
+  </xsl:template>
+</xsl:stylesheet>
+```
 
 For all options (writing to a file, etc.), see:
 
@@ -61,6 +91,10 @@ Only a few field types are supported for now:
 
 * input
 * select
+* wysiwyg
+* textarea
+* date
+* datetime
 * ManyToManyObjectRelation
 
 To extend the supported types, implement a

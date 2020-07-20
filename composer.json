@@ -23,8 +23,11 @@
     "sort-packages": true
   },
   "require": {
-    "pimcore/pimcore": ">=6.0 <7.0",
+    "pimcore/pimcore": ">=5.0 <7.0",
     "spatie/array-to-xml": "^2.12"
+  },
+  "suggest": {
+    "ext-xsl": "Needed to support XSLT transformations via --xslt option"
   },
   "require-dev": {
     "codeception/codeception": "^2.2"

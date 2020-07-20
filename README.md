@@ -10,7 +10,7 @@ GPLv3 - see: gpl-3.0.txt
 
 ## Requirements
 
-* Pimcore >= 6.0.0
+* Pimcore >= 5.0.0
 * XSL PHP extension for --xslt option support
 
 ## Installation

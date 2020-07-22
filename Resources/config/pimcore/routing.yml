@@ -1,4 +1,4 @@
-basilicom_tree_exporter:
+basilicom_xml_tool:
     resource: "@BasilicomXmlToolBundle/Controller/"
     type:     annotation
     prefix:   /

@@ -4,6 +4,11 @@ Adds commands for dealing with XML data. For now, parts
 of the Object tree can be exported recursively, retaining
 the hierarchy.   
 
+Exports can be triggered by a console command and written
+to stdout, a file or an pimcore asset.
+
+If enabled, exports can be made available via a REST API, too.
+
 ## License
 
 GPLv3 - see: gpl-3.0.txt
@@ -16,14 +21,13 @@ GPLv3 - see: gpl-3.0.txt
 ## Installation
 
 1) Install the bundle using composer `composer require basilicom/xml-tool-bundle dev-master`.
-2) Execute `bin/console pimcore:bundle:enable BasilicomXmlToolBundle`.
-
+2) Execute `bin/console pimcore:bundle:enable BasilicomXmlToolBundle`
 
 ## Configuration
 
 n/a
 
-### Usage
+### Console Usage
 
 Use the export command to export command to export
 the Object tree, example for path ```/foo```: 
@@ -85,6 +89,31 @@ For all options (writing to a file, etc.), see:
 ```
     bin/console basilicom:xmltool:export --help
 ```
+
+### Usage: REST API
+
+In order to enable the REST API, place a configuration file in ```app/config/local/xmltool.yml```:
+
+```yaml
+basilicom_xml_tool:
+  api:
+    enabled: true
+    endpoints:
+      test1:
+        token: secrettoken0815
+        root: Products
+        path: /export/products
+        xslt: ../sample.xsl
+        include_variants: true
+        omit_relation_object_fields: true
+      test2:
+        path: /sample/obj/path
+```
+
+This example enables two endpoint URLs:
+
+* https://PIMCORE-SERVER/xml-tool/export/test1?token=secrettoken0815
+* https://PIMCORE-SERVER/xml-tool/export/test2
 
 ### Limitations
 

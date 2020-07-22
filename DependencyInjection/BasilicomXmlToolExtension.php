@@ -2,6 +2,8 @@
 
 namespace Basilicom\XmlToolBundle\DependencyInjection;
 
+use Basilicom\XmlToolBundle\Service\EndpointConfig;
+use Basilicom\XmlToolBundle\Service\XmlConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
@@ -14,6 +16,12 @@ use Symfony\Component\DependencyInjection\Loader;
  */
 class BasilicomXmlToolExtension extends Extension
 {
+    public function getAlias()
+    {
+        return 'basilicom_xml_tool';
+    }
+
+
     /**
      * {@inheritdoc}
      */
@@ -24,5 +32,11 @@ class BasilicomXmlToolExtension extends Extension
 
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yml');
+
+        $controllerDefinition = $container->getDefinition('Basilicom\XmlToolBundle\Controller\ApiController');
+        $arguments = [
+            '$config' => $config
+        ];
+        $controllerDefinition->setArguments($arguments);
     }
 }

@@ -15,6 +15,8 @@ class Xml
     private $includeVariants = false;
     private $omitRelationObjectFields = false;
 
+    private $language = null;
+
     /**
      * @param string|bool $xslt
      */
@@ -99,25 +101,13 @@ class Xml
 
             $className = $cl->getName();
 
+
+
             if ($addFields) {
 
                 $fds = $cl->getFieldDefinitions();
-                foreach ($fds as $fd) {
-                    $fieldName = $fd->getName();
-                    $fieldType = $fd->getFieldtype();
+                $this->processFieldDefinitions($fds, $object, $objectData);
 
-                    $getterFunction = 'getForType' . ucfirst($fieldType);
-
-                    if (method_exists($this, $getterFunction)) {
-
-                        $objectData[$fieldName] = $this->$getterFunction($object, $fieldName);
-                    } else {
-
-                        $objectData[$fieldName] = ['_attributes' => ['skipped' => 'true', 'fieldtype'=>$fieldType]];
-
-                        echo "Unsupported field type: " . $fieldType . ' in ' . $className . ' for '.$fieldName."\n";
-                    }
-                }
             }
 
         }
@@ -169,6 +159,38 @@ class Xml
         return $objectData;
     }
 
+
+    private function processFieldDefinitions($fds, $object, &$objectData)
+    {
+
+        foreach ($fds as $fd) {
+            $fieldName = $fd->getName();
+            $fieldType = $fd->getFieldtype();
+
+            $getterFunction = 'getForType' . ucfirst($fieldType);
+
+            if (method_exists($this, $getterFunction)) {
+
+                $objectData[$fieldName] = $this->$getterFunction($object, $fieldName);
+
+            } elseif ($fieldType == 'localizedfields') {
+
+                $localizedFields = $fd->getFieldDefinitions();
+                foreach (\Pimcore\Tool::getValidLanguages() as $language) {
+                    $this->language = $language;
+                    $this->processFieldDefinitions($localizedFields, $object, $objectData[$fieldName][$language]);
+                }
+                $this->language = null;
+            } else {
+
+                $objectData[$fieldName] = ['_attributes' => ['skipped' => 'true', 'fieldtype'=>$fieldType]];
+
+                echo "Unsupported field type: " . $fieldType . ' for '.$fieldName."\n";
+            }
+        }
+
+    }
+
     // add a getForType* method for every Pimcore Datatype:
 
     private function getForTypeManyToManyObjectRelation($object, $fieldname)
@@ -190,11 +212,18 @@ class Xml
     private function getForTypeInput($object, $fieldname)
     {
         $getterFunction = 'get'.ucfirst($fieldname);
-        $data = $object->$getterFunction();
-        if ($data == null) {
-            return $data;
+
+        if ($this->language == null) {
+
+            $data = $object->$getterFunction();
+            if ($data == null) {
+                return $data;
+            } else {
+                return ['_cdata' => $data];
+            }
         } else {
-            return ['_cdata' => $data];
+            $data = $object->$getterFunction($this->language);
+            return ['_cdata' => $data, '_attributes' => ['language' => $this->language] ];
         }
     }
 
@@ -231,4 +260,5 @@ class Xml
     {
         return $this->getForTypeDate($object, $fieldname);
     }
+
 }

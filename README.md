@@ -11,7 +11,7 @@ If enabled, exports can be made available via a REST API, too.
 
 ## License
 
-GPLv3 - see: gpl-3.0.txt
+GPLv3 - see: LICENSE
 
 ## Requirements
 

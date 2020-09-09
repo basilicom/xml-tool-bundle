@@ -185,7 +185,7 @@ class Xml
 
                 $objectData[$fieldName] = ['_attributes' => ['skipped' => 'true', 'fieldtype'=>$fieldType]];
 
-                echo "Unsupported field type: " . $fieldType . ' for '.$fieldName."\n";
+                //echo "Unsupported field type: " . $fieldType . ' for '.$fieldName."\n";
             }
         }
 
@@ -209,6 +209,17 @@ class Xml
         return $relations;
     }
 
+    /**
+     * Alias - old field type!
+     * @param $object
+     * @param $fieldname
+     * @return array
+     */
+    private function getForTypeObjects($object, $fieldname)
+    {
+        return $this->getForTypeManyToManyObjectRelation($object, $fieldname);
+    }
+
     private function getForTypeInput($object, $fieldname)
     {
         $getterFunction = 'get'.ucfirst($fieldname);
@@ -225,6 +236,11 @@ class Xml
             $data = $object->$getterFunction($this->language);
             return ['_cdata' => $data, '_attributes' => ['language' => $this->language] ];
         }
+    }
+
+    private function getForTypeImage($object, $fieldname)
+    {
+        return $this->getForTypeInput($object, $fieldname);
     }
 
     private function getForTypeSelect($object, $fieldname)
@@ -247,6 +263,22 @@ class Xml
     private function getForTypeWysiwyg($object, $fieldname)
     {
         return $this->getForTypeInput($object, $fieldname);
+    }
+
+    private function getForTypeRgbaColor($object, $fieldname)
+    {
+        return $this->getForTypeInput($object, $fieldname);
+    }
+
+    /**
+     * Alias, old field type!
+     * @param $object
+     * @param $fieldname
+     * @return array|null
+     */
+    private function getForTypeColor($object, $fieldname)
+    {
+        return $this->getForTypeRgbaColor($object, $fieldname);
     }
 
     private function getForTypeDate($object, $fieldname)

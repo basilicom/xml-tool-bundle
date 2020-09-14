@@ -209,6 +209,45 @@ class Xml
         return $relations;
     }
 
+    private function getForTypeAdvancedManyToManyObjectRelation($object, $fieldname)
+    {
+
+        $relations = [];
+        $meta = [];
+
+        $getterFunction = 'get'.ucfirst($fieldname);
+
+        /** @var Data\ObjectMetadata $relationMetaObject */
+        foreach($object->$getterFunction() as $relationMetaObject) {
+
+            $relationObject = $relationMetaObject->getObject();
+
+            $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
+
+            $data = $relationMetaObject->getData();
+
+
+            $meta['pc:relation'][] = [
+                $exportObject['_attributes']['class'] => $exportObject,
+                'pc:meta'=>$data
+            ];
+        }
+
+
+        return $meta;
+    }
+
+    /**
+     * Alias - old field type!
+     * @param $object
+     * @param $fieldname
+     * @return array
+     */
+    private function getForTypeObjectsMetadata($object, $fieldname)
+    {
+        return $this->getForTypeAdvancedManyToManyObjectRelation($object, $fieldname);
+    }
+
     /**
      * Alias - old field type!
      * @param $object

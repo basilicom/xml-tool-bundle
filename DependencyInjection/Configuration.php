@@ -19,8 +19,7 @@ class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder();
         $rootNode = $treeBuilder->root('basilicom_xml_tool');
-
-        $treeBuilder->getRootNode()
+        $rootNode
             ->children()
                 ->arrayNode('api')
                     ->fixXmlConfig('endpoint')

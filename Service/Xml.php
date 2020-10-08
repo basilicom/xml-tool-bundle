@@ -2,8 +2,11 @@
 
 namespace Basilicom\XmlToolBundle\Service;
 
+use DOMDocument;
+use DOMException;
 use Pimcore\Model\DataObject;
 use Spatie\ArrayToXml\ArrayToXml;
+use XSLTProcessor;
 
 class Xml
 {
@@ -35,6 +38,8 @@ class Xml
 
     /**
      * @param bool $includeVariants
+     *
+     * @return void
      */
     public function setIncludeVariants(bool $includeVariants): void
     {
@@ -51,16 +56,24 @@ class Xml
 
     /**
      * @param bool $omitRelationObjectFields
+     *
+     * @return void
      */
     public function setOmitRelationObjectFields(bool $omitRelationObjectFields): void
     {
         $this->omitRelationObjectFields = $omitRelationObjectFields;
     }
 
-
+    /**
+     * @param $object
+     * @param $root
+     *
+     * @return DOMDocument|false
+     *
+     * @throws DOMException
+     */
     public function exportTree($object, $root)
     {
-
         $treeData = $this->exportObject($object);
         $treeData['_attributes']['xmlns:pc'] = 'https://basilicom.de/pimcore';
 
@@ -69,10 +82,10 @@ class Xml
         $xmlDom = $arrayToXml->toDom();
 
         if ($this->xslt) {
-            $xslDom = new \DOMDocument;
+            $xslDom = new DOMDocument;
             $xslDom->load($this->xslt);
 
-            $proc = new \XSLTProcessor;
+            $proc = new XSLTProcessor;
             $proc->importStyleSheet($xslDom);
 
             $xmlDom = $proc->transformToDoc($xmlDom);
@@ -84,11 +97,13 @@ class Xml
     /**
      * @param DataObject $object
      * @param bool $useRecursion
+     * @param bool $addFields
+     *
      * @return array
      *
      * @todo Check for a specific "export" on a class in order to allow overriding the "default" way
      */
-    private function exportObject(DataObject $object, $useRecursion=true, $addFields=true)
+    private function exportObject(DataObject $object, $useRecursion=true, $addFields=true): array
     {
         $objectData = [];
 
@@ -98,10 +113,7 @@ class Xml
 
             /** @var DataObject\ClassDefinition $cl */
             $cl = $object->getClass();
-
             $className = $cl->getName();
-
-
 
             if ($addFields) {
 
@@ -109,7 +121,6 @@ class Xml
                 $this->processFieldDefinitions($fds, $object, $objectData);
 
             }
-
         }
 
         $childDataList = [];
@@ -152,17 +163,22 @@ class Xml
             'type' => $object->getType(),
             'key'  => $object->getKey(),
             'class' => $className,
-            'is-variant-leaf' => (($object->getType()=='variant')&&(count($variantDataList)==0)?'true':'false'),
-            'is-object-leaf' => (($object->getType()=='object')&&(count($childDataList)==0)?'true':'false'),
+            'is-variant-leaf' => (($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false'),
+            'is-object-leaf' => (($object->getType()==='object')&&(count($childDataList)===0)?'true':'false'),
         ];
 
         return $objectData;
     }
 
-
-    private function processFieldDefinitions($fds, $object, &$objectData)
+    /**
+     * @param $fds
+     * @param $object
+     * @param $objectData
+     *
+     * @return void
+     */
+    private function processFieldDefinitions($fds, $object, &$objectData): void
     {
-
         foreach ($fds as $fd) {
             $fieldName = $fd->getName();
             $fieldType = $fd->getFieldtype();
@@ -173,7 +189,7 @@ class Xml
 
                 $objectData[$fieldName] = $this->$getterFunction($object, $fieldName);
 
-            } elseif ($fieldType == 'localizedfields') {
+            } elseif ($fieldType === 'localizedfields') {
 
                 $localizedFields = $fd->getFieldDefinitions();
                 foreach (\Pimcore\Tool::getValidLanguages() as $language) {
@@ -188,51 +204,65 @@ class Xml
                 //echo "Unsupported field type: " . $fieldType . ' for '.$fieldName."\n";
             }
         }
-
     }
 
     // add a getForType* method for every Pimcore Datatype:
 
-    private function getForTypeManyToManyObjectRelation($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array
+     */
+    private function getForTypeManyToManyObjectRelation($object, $fieldname): array
     {
         $relations = [];
-        $getterFunction = 'get'.ucfirst($fieldname);
-        foreach($object->$getterFunction() as $relationObject) {
-            $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
 
-            if (!array_key_exists($exportObject['_attributes']['class'], $relations)) {
-                $relations[$exportObject['_attributes']['class']] = [];
+        $getterFunction = 'get'.ucfirst($fieldname);
+        /** @var array|null $relationObjects */
+        $relationObjects = $object->$getterFunction();
+
+        if (is_iterable($relationObjects)) {
+            foreach($relationObjects as $relationObject) {
+                $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
+
+                if (!array_key_exists($exportObject['_attributes']['class'], $relations)) {
+                    $relations[$exportObject['_attributes']['class']] = [];
+                }
+                $relations[$exportObject['_attributes']['class']][] = $exportObject;
             }
-            $relations[$exportObject['_attributes']['class']][] = $exportObject;
         }
 
         return $relations;
     }
 
-    private function getForTypeAdvancedManyToManyObjectRelation($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array
+     */
+    private function getForTypeAdvancedManyToManyObjectRelation($object, $fieldname): array
     {
-
         $relations = [];
         $meta = [];
 
         $getterFunction = 'get'.ucfirst($fieldname);
+        /** @var Data\ObjectMetadata[]|null $relationMetaObjects */
+        $relationMetaObjects = $object->$getterFunction();
 
-        /** @var Data\ObjectMetadata $relationMetaObject */
-        foreach($object->$getterFunction() as $relationMetaObject) {
+        if (is_iterable($relationMetaObjects)) {
+            foreach ($object->$getterFunction() as $relationMetaObject) {
+                $relationObject = $relationMetaObject->getObject();
+                $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
+                $data = $relationMetaObject->getData();
 
-            $relationObject = $relationMetaObject->getObject();
-
-            $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
-
-            $data = $relationMetaObject->getData();
-
-
-            $meta['pc:relation'][] = [
-                $exportObject['_attributes']['class'] => $exportObject,
-                'pc:meta'=>$data
-            ];
+                $meta['pc:relation'][] = [
+                    $exportObject['_attributes']['class'] => $exportObject,
+                    'pc:meta' => $data
+                ];
+            }
         }
-
 
         return $meta;
     }
@@ -241,9 +271,10 @@ class Xml
      * Alias - old field type!
      * @param $object
      * @param $fieldname
+     *
      * @return array
      */
-    private function getForTypeObjectsMetadata($object, $fieldname)
+    private function getForTypeObjectsMetadata($object, $fieldname): array
     {
         return $this->getForTypeAdvancedManyToManyObjectRelation($object, $fieldname);
     }
@@ -252,21 +283,28 @@ class Xml
      * Alias - old field type!
      * @param $object
      * @param $fieldname
+     *
      * @return array
      */
-    private function getForTypeObjects($object, $fieldname)
+    private function getForTypeObjects($object, $fieldname): array
     {
         return $this->getForTypeManyToManyObjectRelation($object, $fieldname);
     }
 
-    private function getForTypeInput($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array|null
+     */
+    private function getForTypeInput($object, $fieldname): ?array
     {
         $getterFunction = 'get'.ucfirst($fieldname);
 
-        if ($this->language == null) {
+        if ($this->language === null) {
 
             $data = $object->$getterFunction();
-            if ($data == null) {
+            if ($data === null) {
                 return $data;
             } else {
                 return ['_cdata' => $data];
@@ -277,34 +315,69 @@ class Xml
         }
     }
 
-    private function getForTypeImage($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array|null
+     */
+    private function getForTypeImage($object, $fieldname): ?array
     {
         return $this->getForTypeInput($object, $fieldname);
     }
 
-    private function getForTypeSelect($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array|null
+     */
+    private function getForTypeSelect($object, $fieldname): ?array
     {
         return $this->getForTypeInput($object, $fieldname);
     }
 
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return mixed
+     */
     private function getForTypeNumeric($object, $fieldname)
     {
         $getterFunction = 'get'.ucfirst($fieldname);
-        $data = $object->$getterFunction();
-        return $data;
+        return $object->$getterFunction();
     }
 
-    private function getForTypeTextarea($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array|null
+     */
+    private function getForTypeTextarea($object, $fieldname): ?array
     {
         return $this->getForTypeInput($object, $fieldname);
     }
 
-    private function getForTypeWysiwyg($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array|null
+     */
+    private function getForTypeWysiwyg($object, $fieldname): ?array
     {
         return $this->getForTypeInput($object, $fieldname);
     }
 
-    private function getForTypeRgbaColor($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return array|null
+     */
+    private function getForTypeRgbaColor($object, $fieldname): ?array
     {
         return $this->getForTypeInput($object, $fieldname);
     }
@@ -313,23 +386,34 @@ class Xml
      * Alias, old field type!
      * @param $object
      * @param $fieldname
+     *
      * @return array|null
      */
-    private function getForTypeColor($object, $fieldname)
+    private function getForTypeColor($object, $fieldname): ?array
     {
         return $this->getForTypeRgbaColor($object, $fieldname);
     }
 
-    private function getForTypeDate($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return string
+     */
+    private function getForTypeDate($object, $fieldname): string
     {
         $getterFunction = 'get'.ucfirst($fieldname);
-        $data = (string)$object->$getterFunction();
-        return $data;
+        return (string)$object->$getterFunction();
     }
 
-    private function getForTypeDatetime($object, $fieldname)
+    /**
+     * @param $object
+     * @param $fieldname
+     *
+     * @return string
+     */
+    private function getForTypeDatetime($object, $fieldname): string
     {
         return $this->getForTypeDate($object, $fieldname);
     }
-
 }

@@ -9,12 +9,27 @@ to stdout, a file or an pimcore asset.
 
 If enabled, exports can be made available via a REST API, too.
 
+Table of contents
+=================
+
+<!--ts-->
+   * [Basilicom Xml Tool bundle for Pimcore](#basilicom-xml-tool-bundle-for-pimcore)
+      * [License](#license)
+      * [Requirements](#requirements)
+      * [Installation](#installation)
+      * [Configuration](#configuration)
+         * [Console Usage](#console-usage)
+         * [Usage: REST API](#usage-rest-api)
+         * [Limitations](#limitations)
+<!--te-->
+
 ## License
 
 GPLv3 - see: LICENSE
 
 ## Requirements
 
+* PHP >= 7.1
 * Pimcore >= 5.0.0
 * XSL PHP extension for --xslt option support
 
@@ -38,11 +53,11 @@ the Object tree, example for path ```/foo```:
 
 Example output:
 
-Note: The Object tree ```/``` contains in the example a single Object of 
+Note: The Object tree ```/foo``` contains in the example a single Object of 
 the Object Class ```Bar``` with a single Input property of ```name```.
 
 ```
-Exporting tree of Objects starting at /
+Exporting tree of Objects starting at /foo
 <?xml version="1.0"?>
 <root id="1" type="folder" key="" class="Folder">
   <:children>
@@ -101,8 +116,8 @@ basilicom_xml_tool:
     endpoints:
       test1:
         token: secrettoken0815
-        root: Products
-        path: /export/products
+        root: Products # Root name of the exported XML file
+        path: /export/products # Path to the exporting objects
         xslt: ../sample.xsl
         include_variants: true
         omit_relation_object_fields: true
@@ -126,8 +141,11 @@ Only a few field types are supported for now:
 * date
 * datetime
 * ManyToManyObjectRelation
+* color
+* rgbaColor
+* localizedFields
 
 To extend the supported types, implement a
-```getForType*``` method in ```ExportCommand.php```.
+```getForType*``` method in ```Service/Xml.php```.
 
 

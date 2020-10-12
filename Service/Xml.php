@@ -128,7 +128,7 @@ class Xml
         if ($useRecursion) {
             $children = $object->getChildren();
             foreach ($children as $child) {
-                $childData =  $this->exportObject($child);
+                $childData =  $this->exportObject($child, true, !$this->omitRelationObjectFields);
                 if (!array_key_exists($childData['_attributes']['class'], $childDataList)) {
                     $childDataList[$childData['_attributes']['class']] = [];
                 }
@@ -141,7 +141,7 @@ class Xml
         if ($this->includeVariants) {
             $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT]);
             foreach ($children as $child) {
-                $childData =  $this->exportObject($child);
+                $childData =  $this->exportObject($child, true, !$this->omitRelationObjectFields);
                 if (!array_key_exists($childData['_attributes']['class'], $variantDataList)) {
                     $variantDataList[$childData['_attributes']['class']] = [];
                 }

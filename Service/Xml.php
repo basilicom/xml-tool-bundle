@@ -20,6 +20,8 @@ class Xml
 
     private $language = null;
 
+    private $exportCache = []; // stores id
+
     /**
      * @param string|bool $xslt
      */
@@ -107,6 +109,8 @@ class Xml
     {
         $objectData = [];
 
+        $this->exportCache[$object->getId()] = true; // remember that we are exported this object
+        
         $className = 'Folder';
 
         if ($object->getType() !== 'folder') {
@@ -224,7 +228,13 @@ class Xml
 
         if (is_iterable($relationObjects)) {
             foreach($relationObjects as $relationObject) {
-                $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
+                
+                $addFields = !$this->omitRelationObjectFields;
+
+                if ($this->exportCache[$relationObject->getId()]) {
+                    $addFields = false;
+                }
+                $exportObject = $this->exportObject($relationObject, false, $addFields);                
 
                 if (!array_key_exists($exportObject['_attributes']['class'], $relations)) {
                     $relations[$exportObject['_attributes']['class']] = [];
@@ -254,7 +264,13 @@ class Xml
         if (is_iterable($relationMetaObjects)) {
             foreach ($object->$getterFunction() as $relationMetaObject) {
                 $relationObject = $relationMetaObject->getObject();
-                $exportObject = $this->exportObject($relationObject, false, !$this->omitRelationObjectFields);
+
+                $addFields = !$this->omitRelationObjectFields;
+
+                if ($this->exportCache[$relationObject->getId()]) {
+                    $addFields = false;
+                }
+                $exportObject = $this->exportObject($relationObject, false, $addFields);                
                 $data = $relationMetaObject->getData();
 
                 $meta['pc:relation'][] = [

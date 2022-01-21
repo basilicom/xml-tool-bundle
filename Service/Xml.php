@@ -16,6 +16,7 @@ class Xml
     private $xslt = false;
 
     private $includeVariants = false;
+    private $includeUnpublishedProducts = false;
     private $omitRelationObjectFields = false;
 
     private $language = null;
@@ -46,6 +47,11 @@ class Xml
     public function setIncludeVariants(bool $includeVariants): void
     {
         $this->includeVariants = $includeVariants;
+    }
+
+    public function setIncludeUnpublishedProducts(bool $includeUnpublishedProducts): void
+    {
+        $this->includeUnpublishedProducts = $includeUnpublishedProducts;
     }
 
     /**
@@ -130,7 +136,7 @@ class Xml
         $childDataList = [];
 
         if ($useRecursion) {
-            $children = $object->getChildren();
+            $children = $object->getChildren(['object', 'folder'], $this->includeUnpublishedProducts);
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
                 if (!array_key_exists($childData['_attributes']['class'], $childDataList)) {
@@ -143,7 +149,7 @@ class Xml
         $variantDataList = [];
 
         if ($this->includeVariants) {
-            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT]);
+            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT], $this->includeUnpublishedProducts);
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
                 if (!array_key_exists($childData['_attributes']['class'], $variantDataList)) {
@@ -169,6 +175,7 @@ class Xml
             'class' => $className,
             'is-variant-leaf' => (($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false'),
             'is-object-leaf' => (($object->getType()==='object')&&(count($childDataList)===0)?'true':'false'),
+            'is-published' => (($object->getType()==='object')&&(count($childDataList)===0)&&($object->isPublished()) ?'true':'false'),
         ];
 
         return $objectData;

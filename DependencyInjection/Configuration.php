@@ -33,6 +33,7 @@ class Configuration implements ConfigurationInterface
                                     ->scalarNode('token')->defaultValue('')->end()
                                     ->scalarNode('xslt')->defaultValue('')->end()
                                     ->scalarNode('include_variants')->defaultValue('false')->end()
+                                    ->scalarNode('include_unpublished')->defaultValue('false')->end()
                                     ->scalarNode('omit_relation_object_fields')->defaultValue('false')->end()
                                 ->end()
                             ->end()

@@ -53,6 +53,7 @@ class ApiController extends FrontendController
 
             $this->xmlService->setIncludeVariants(($config['include_variants'] == true));
             $this->xmlService->setOmitRelationObjectFields(($config['omit_relation_object_fields'] == true));
+            $this->xmlService->setIncludeUnpublishedProducts($config['include_unpublished'] == true);
 
             $this->xmlService->setXslt($config['xslt']);
 

@@ -16,6 +16,7 @@ class Xml
     private $xslt = false;
 
     private $includeVariants = false;
+    private $includeUnpublished = false;
     private $omitRelationObjectFields = false;
 
     private $language = null;
@@ -49,11 +50,29 @@ class Xml
     }
 
     /**
+     * @param bool $includeUnpublished
+     *
+     * @return void
+     */
+    public function setIncludeUnpublished(bool $includeUnpublished): void
+    {
+        $this->includeUnpublished = $includeUnpublished;
+    }
+
+    /**
      * @return bool
      */
     public function isOmitRelationObjectFields(): bool
     {
         return $this->omitRelationObjectFields;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isIncludeUnpublished(): bool
+    {
+        return $this->includeUnpublished;
     }
 
     /**
@@ -130,7 +149,7 @@ class Xml
         $childDataList = [];
 
         if ($useRecursion) {
-            $children = $object->getChildren();
+            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_OBJECT, DataObject\AbstractObject::OBJECT_TYPE_FOLDER], $this->isIncludeUnpublished());
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
                 if (!array_key_exists($childData['_attributes']['class'], $childDataList)) {
@@ -143,7 +162,7 @@ class Xml
         $variantDataList = [];
 
         if ($this->includeVariants) {
-            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT]);
+            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT], $this->isIncludeUnpublished());
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
                 if (!array_key_exists($childData['_attributes']['class'], $variantDataList)) {
@@ -169,6 +188,7 @@ class Xml
             'class' => $className,
             'is-variant-leaf' => (($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false'),
             'is-object-leaf' => (($object->getType()==='object')&&(count($childDataList)===0)?'true':'false'),
+            'is-published' => (($object->getType()==='object')&&(count($childDataList)===0)&&($object->isPublished()) ?'true':'false'),
         ];
 
         return $objectData;

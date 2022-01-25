@@ -16,7 +16,7 @@ class Xml
     private $xslt = false;
 
     private $includeVariants = false;
-    private $includeUnpublishedProducts = false;
+    private $includeUnpublished = false;
     private $omitRelationObjectFields = false;
 
     private $language = null;
@@ -49,9 +49,14 @@ class Xml
         $this->includeVariants = $includeVariants;
     }
 
-    public function setIncludeUnpublishedProducts(bool $includeUnpublishedProducts): void
+    /**
+     * @param bool $includeUnpublished
+     *
+     * @return void
+     */
+    public function setIncludeUnpublished(bool $includeUnpublished): void
     {
-        $this->includeUnpublishedProducts = $includeUnpublishedProducts;
+        $this->includeUnpublished = $includeUnpublished;
     }
 
     /**
@@ -60,6 +65,14 @@ class Xml
     public function isOmitRelationObjectFields(): bool
     {
         return $this->omitRelationObjectFields;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isIncludeUnpublished(): bool
+    {
+        return $this->includeUnpublished;
     }
 
     /**
@@ -136,7 +149,7 @@ class Xml
         $childDataList = [];
 
         if ($useRecursion) {
-            $children = $object->getChildren(['object', 'folder'], $this->includeUnpublishedProducts);
+            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_OBJECT, DataObject\AbstractObject::OBJECT_TYPE_FOLDER], $this->isIncludeUnpublished());
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
                 if (!array_key_exists($childData['_attributes']['class'], $childDataList)) {
@@ -149,7 +162,7 @@ class Xml
         $variantDataList = [];
 
         if ($this->includeVariants) {
-            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT], $this->includeUnpublishedProducts);
+            $children = $object->getChildren([DataObject\AbstractObject::OBJECT_TYPE_VARIANT], $this->isIncludeUnpublished());
             foreach ($children as $child) {
                 $childData =  $this->exportObject($child);
                 if (!array_key_exists($childData['_attributes']['class'], $variantDataList)) {

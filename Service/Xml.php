@@ -129,7 +129,7 @@ class Xml
         $objectData = [];
 
         $this->exportCache[$object->getId()] = true; // remember that we are exported this object
-        
+
         $className = 'Folder';
 
         if ($object->getType() !== 'folder') {
@@ -186,10 +186,13 @@ class Xml
             'type' => $object->getType(),
             'key'  => $object->getKey(),
             'class' => $className,
-            'is-variant-leaf' => (($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false'),
-            'is-object-leaf' => (($object->getType()==='object')&&(count($childDataList)===0)?'true':'false'),
-            'is-published' => (($object->getType()==='object')&&(count($childDataList)===0)&&($object->isPublished()) ?'true':'false'),
         ];
+
+        if($object->getType()==='object' || $object->getType()==='variant') {
+            $objectData['_attributes']['is-variant-leaf'] = ($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false';
+            $objectData['_attributes']['is-object-leaf'] = ($object->getType()==='object')&&(count($childDataList)===0)?'true':'false';
+            $objectData['_attributes']['is-published'] = $object->isPublished()?'true':'false';
+        }
 
         return $objectData;
     }
@@ -242,19 +245,20 @@ class Xml
     {
         $relations = [];
 
+        DataObject::setHideUnpublished(!$this->isIncludeUnpublished());
         $getterFunction = 'get'.ucfirst($fieldname);
         /** @var array|null $relationObjects */
         $relationObjects = $object->$getterFunction();
 
         if (is_iterable($relationObjects)) {
             foreach($relationObjects as $relationObject) {
-                
+
                 $addFields = !$this->omitRelationObjectFields;
 
                 if ($this->exportCache[$relationObject->getId()]) {
                     $addFields = false;
                 }
-                $exportObject = $this->exportObject($relationObject, false, $addFields);                
+                $exportObject = $this->exportObject($relationObject, false, $addFields);
 
                 if (!array_key_exists($exportObject['_attributes']['class'], $relations)) {
                     $relations[$exportObject['_attributes']['class']] = [];
@@ -277,6 +281,7 @@ class Xml
         $relations = [];
         $meta = [];
 
+        DataObject::setHideUnpublished(!$this->isIncludeUnpublished());
         $getterFunction = 'get'.ucfirst($fieldname);
         /** @var Data\ObjectMetadata[]|null $relationMetaObjects */
         $relationMetaObjects = $object->$getterFunction();
@@ -290,7 +295,7 @@ class Xml
                 if ($this->exportCache[$relationObject->getId()]) {
                     $addFields = false;
                 }
-                $exportObject = $this->exportObject($relationObject, false, $addFields);                
+                $exportObject = $this->exportObject($relationObject, false, $addFields);
                 $data = $relationMetaObject->getData();
 
                 $meta['pc:relation'][] = [

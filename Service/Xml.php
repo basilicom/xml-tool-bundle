@@ -186,10 +186,13 @@ class Xml
             'type' => $object->getType(),
             'key'  => $object->getKey(),
             'class' => $className,
-            'is-variant-leaf' => (($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false'),
-            'is-object-leaf' => (($object->getType()==='object')&&(count($childDataList)===0)?'true':'false'),
-            'is-published' => ((($object->getType()==='object')||($object->getType()==='variant'))&&($object->isPublished()) ?'true':'false'),
         ];
+
+        if($object->getType()==='object' || $object->getType()==='variant') {
+            $objectData['_attributes']['is-variant-leaf'] = ($object->getType()==='variant')&&(count($variantDataList)===0)?'true':'false';
+            $objectData['_attributes']['is-object-leaf'] = ($object->getType()==='object')&&(count($childDataList)===0)?'true':'false';
+            $objectData['_attributes']['is-published'] = (($object->getType()==='object')||($object->getType()==='variant'))&&($object->isPublished()) ?'true':'false';
+        }
 
         return $objectData;
     }
